@@ -9,9 +9,10 @@ The goal is to analyze revenue trends, customer demographics, product categories
 Contains user transactions with attributes such as User ID, Age, Gender, Country, Purchase Amount, Purchase Date, and Product Category.  
 Used for data cleaning, summarization, visualization, and analysis in this project.
 
-## Tools Used
+## Tools & Libraries Used
 - **R** – Data manipulation, analysis, and visualization  
 - **R Markdown** – Code documentation and report generation  
+- **Tidyverse, Janitor, Lubridate, Readr, Skimr, Scales** – For data cleaning, transformation, and visualization  
 - **PDF** – Final project report
 
 ## Analysis & Key Findings
