@@ -1,0 +1,373 @@
+---
+title: "Customer Purchase Data Analysis"
+author: "Nabeel Kamal Shamsi"
+date: "`r Sys.Date()`"
+output:  html_document
+
+---
+# Introduction
+
+This report presents an analysis of customer purchase data. The objective is to explore patterns in revenue, average purchase amounts, sales volume, and customer demographics such as gender and country.  
+The analysis will include data cleaning, summarization, and visualization to generate actionable insights for business decision-making.
+
+
+
+
+### Import libraries
+```{r setup-libraries, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Data import & summarization
+library(readr)
+library(skimr)
+
+# Data manipulation & cleaning
+library(tidyverse)
+library(janitor)
+library(lubridate)
+
+# Visualization helpers
+library(scales)
+```
+
+```{r import-data, echo=TRUE, message=FALSE, warning=FALSE}
+# Set global options for chunks (optional, hidden)
+knitr::opts_chunk$set(echo = FALSE)
+
+# Import CSV silently
+data <- read.csv("C:/Users/Nabeel Shamsi/OneDrive/Desktop/R Project/dataset.csv")
+```
+### Overview of the dataset
+```{r overview the data, echo=TRUE, message=FALSE, warning=FALSE}
+# Set global options for chunks (optional, hidden)
+knitr::opts_chunk$set(echo = FALSE)
+
+skim_without_charts(data)
+```
+## Data cleaning
+
+#### Before performing any analysis, the dataset was carefully cleaned to ensure data quality and consistency.
+* The following steps were applied:
+* Handling missing values: All blank entries in the dataset were converted to NA, and rows containing any missing values were removed. This ensures that all remaining data is complete and reliable for analysis.
+* Standardizing column names: Column names were cleaned and standardized to a consistent format using clean_names(). This makes the dataset easier to work with and reduces the risk of errors due to inconsistent naming.
+* Checking date consistency: The purchase_date column was converted to a proper Date format. Any illogical dates (earlier than 2019-01-01 or later than today) were identified to ensure date-related analysis is accurate.
+* Verifying age ranges: The maximum and minimum age values were checked to confirm that age data is valid and there are no extreme or erroneous entries.
+
+```{r Data cleaning, echo=TRUE, message=FALSE, warning=FALSE}
+# Set global options for chunks (optional, hidden)
+knitr::opts_chunk$set(echo = FALSE)
+# Convert empty strings to NA
+data[data == ""] <- NA
+# Check missing values per column
+colSums(is.na(data))
+# Remove rows with any NA values (complete cases)
+data_clean <- na.omit(data)
+# Check the number of rows after cleaning
+nrow(data_clean)
+# Clean column names
+data_clean <- clean_names(data_clean)
+# Ensure column names are clean
+data_clean <- data_clean %>%
+  mutate(purchase_date = as.Date(purchase_date))
+# Check date is valid
+min_valid_date <- as.Date("2019-01-01")
+max_valid_date <- Sys.Date()
+# Filter for illogical dates outside
+illogical_dates <- data_clean %>%
+  filter(purchase_date < min_valid_date | purchase_date > max_valid_date)
+# Print results
+print(illogical_dates)
+# Standardize gender column
+data_clean <- data_clean %>%
+  mutate(
+    gender = str_to_lower(gender),
+    gender = str_to_title(gender),
+    gender = case_when(
+      gender %in% c("Male", "Female", "Other") ~ gender,
+      TRUE ~ NA_character_))
+# Standardize gender country
+data_clean <- data_clean %>%
+  mutate(
+    country = str_to_lower(country),   
+    country = str_to_title(country))
+# Standardize gender product category
+data_clean <- data_clean %>%
+  mutate(
+    product_category = str_to_lower(product_category),
+    product_category = str_to_title(product_category))
+```
+###### Maximum and minimum age
+```{r maximum and minimum age, echo=TRUE, message=FALSE, warning=FALSE}
+# Check the maximum and minimum age in the dataset
+max(data_clean$age)
+min(data_clean$age)
+```
+## Cleaned Dataset Overview
+
+The dataset has been cleaned to ensure accuracy and consistency.  
+Missing or blank values have been removed, column names have been standardized, dates have been checked for validity, and the age column has been verified for reasonable values.  
+
+Below is a preview of the cleaned data showing customer demographics, purchase amounts, dates, and product categories.
+```{r after cleaning data, echo=TRUE, message=FALSE, warning=FALSE}
+head(data_clean)
+```
+### Total revenue per country with percentage
+```{r total-revenue-country, echo=TRUE, message=FALSE, warning=FALSE}
+# Calculate overall total revenue
+total_revenue_overall <- sum(data_clean$purchase_amount)
+
+country_summary <- data_clean %>%
+  group_by(country) %>%
+  summarise(
+    total_revenue = sum(purchase_amount),          
+    avg_purchase_amount = mean(purchase_amount),  
+    sales_volume = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    percentage = paste0(round(total_revenue / total_revenue_overall * 100, 1), "%")
+  ) %>%
+  arrange(desc(total_revenue))
+
+# Display the table
+knitr::kable(country_summary)
+
+```
+**Interpretation:**  
+France has the highest total revenue at 18% of overall sales, followed closely by Canada (16.7%) and Germany (16.5%).  
+The remaining countries (USA, Australia, UK) each contribute around 16% of the total revenue, showing a fairly balanced distribution among top markets.
+
+### Average spend per gender with percentage
+```{r Average spend per gender with percentage, echo=TRUE, message=FALSE, warning=FALSE}
+total_revenue_overall <- sum(data_clean$purchase_amount)
+
+# Average spend per gender with percentage
+gender_summary <- data_clean %>%
+  group_by(gender) %>%
+  summarise(
+    avg_purchase_amount = mean(purchase_amount),  
+    total_revenue = sum(purchase_amount),        
+    sales_volume = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    percentage = total_revenue / total_revenue_overall * 100
+  )
+# Display the table
+knitr::kable(gender_summary)
+```
+**Interpretation:**  
+Female customers contribute the highest share of total revenue at 34.4%, with an average purchase amount of 255.57.  
+Male and Other customers are fairly close, contributing 32.6% and 33.0% of revenue respectively, showing a relatively balanced spending pattern across genders.
+
+### Total revenue per product category
+```{r Plot total revenue per product category, echo=TRUE, message=FALSE, warning=FALSE}
+category_revenue <- data_clean %>%
+  group_by(product_category) %>%
+  summarise(total_revenue = sum(purchase_amount), .groups = "drop") %>%
+  arrange(desc(total_revenue))
+
+# Plot total revenue per product category
+ggplot(category_revenue, aes(x = reorder(product_category, total_revenue), 
+                             y = total_revenue, fill = product_category)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs( x = "Product Category", y = "Total Revenue") +
+  scale_y_continuous(labels = scales::comma) +
+  theme_classic() +
+  theme(legend.position = "none")
+category_volume <- data_clean %>%
+  group_by(product_category) %>%
+  summarise(transaction_count = n()) %>%
+  arrange(desc(transaction_count))
+```
+
+**Interpretation:**  
+The bar chart shows total revenue for each product category. Clothing is the top revenue generator, approaching $400,000.  
+Home & Kitchen, Sports, Books, and Electronics are closely clustered between $360,000 and $380,000, showing a highly competitive middle tier.  
+Beauty has the lowest revenue, just below the middle tier, at around $350,000. Overall, revenue is fairly diversified across categories.
+
+### Total Revenue per Country
+
+```{r Transaction Volume per product category, echo=TRUE, message=FALSE, warning=FALSE}
+
+country_summary <- data_clean %>%
+  group_by(country) %>%
+  summarise(
+    total_revenue = sum(purchase_amount),
+    avg_purchase_amount = mean(purchase_amount),
+    transaction_count = n()
+  ) %>%
+  arrange(desc(total_revenue))
+ggplot(country_summary, aes(x = reorder(country, total_revenue), y = total_revenue, fill = country)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +  
+  labs(
+    x = "Country",
+    y = "Total Revenue"
+  ) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+```
+
+**Interpretation:**  
+France generates the highest total revenue, slightly above 400,000, while the UK records the lowest, at around 375,000.  
+Canada, Germany, USA, and Australia have very similar revenue levels, clustered between approximately 380,000 and 390,000, with no clear ranking among them.  
+Overall, France leads clearly, the UK trails, and the remaining countries form a tightly grouped mid-tier.
+
+### Average Purchase Amount by Age Group
+
+```{r avg_purchase_by_age_group, echo=TRUE, message=FALSE, warning=FALSE}
+
+age_summary <- data_clean %>%
+  mutate(age_group = case_when(
+    age >= 18 & age <= 24 ~ "18-24",
+    age >= 25 & age <= 34 ~ "25-34",
+    age >= 35 & age <= 44 ~ "35-44",
+    age >= 45 & age <= 54 ~ "45-54",
+    age >= 55             ~ "55+"
+  )) %>%
+  group_by(age_group) %>%
+  summarise(avg_purchase_amount = mean(purchase_amount), .groups = "drop")
+
+age_summary$age_group <- factor(
+  age_summary$age_group,
+  levels = c("18-24", "25-34", "35-44", "45-54", "55+")
+)
+
+ggplot(age_summary, aes(x = age_group, y = avg_purchase_amount, fill = age_group)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(
+    x = "Age Group",
+    y = "Average Purchase Amount"
+  ) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+```
+
+**Interpretation:**  
+The bar chart shows average purchase amount by age group. Customers aged **35–44** have the highest average spending, making them the top-spending group.  
+The **18–24**, **25–34**, and **55+** age groups show very similar purchase levels, forming a mid-range cluster.  
+The **45–54** age group has the lowest average purchase amount. Overall, spending peaks in the middle-age segment and is slightly lower among older customers.
+
+### Product Mix by Country
+```{r Product Mix by Country, echo=TRUE, message=FALSE, warning=FALSE}
+
+country_product <- data_clean %>%
+  group_by(country, product_category) %>%
+  summarise(total_revenue = sum(purchase_amount)) %>%
+  ungroup()
+ggplot(country_product, aes(x = country, y = total_revenue, fill = product_category)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::comma) +
+  scale_fill_brewer(palette = "Set2") +        
+  labs(
+    x = "Country",
+    y = "Total Revenue",
+    fill = "Product Category"
+  ) +
+  theme_classic()
+```
+
+**Interpretation:**  
+France emerges as the market leader, driven by exceptionally strong performance, particularly in the Clothing category.  
+While most countries display a relatively balanced revenue mix, differences in the Clothing, Books, and Beauty segments appear to be the main contributors to variation in total revenue.  
+These category-level differences help explain the gap between the top-performing country (France) and the others, such as the UK and USA.
+
+### Sales Trend Over Time
+
+```{r Sales Trend Over Time, echo=TRUE, message=FALSE, warning=FALSE}
+
+data_clean$purchase_date <- as.Date(data_clean$purchase_date)
+monthly_revenue <- data_clean %>%
+  mutate(year_month = floor_date(purchase_date, "month")) %>% 
+  group_by(year_month) %>%
+  summarise(total_revenue = sum(purchase_amount)) %>%
+  arrange(year_month)
+ggplot(monthly_revenue, aes(x = year_month, y = total_revenue)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "darkred") +
+  scale_y_continuous(labels = comma) +  
+  labs(
+    x = "Month",
+    y = "Total Revenue"
+  ) +
+  theme_classic()
+```
+
+**Interpretation:**  
+The line chart shows monthly total revenue over a four-year period with strong fluctuations. Revenue exhibits clear seasonal patterns, with recurring peaks and troughs each year, indicating high volatility.  
+Despite these short-term swings, there is no clear long-term upward or downward trend, suggesting that overall revenue has remained relatively stable over time rather than experiencing sustained growth or decline.
+
+### Plot monthly seasonality
+
+```{r Plot monthly seasonality, echo=TRUE, message=FALSE, warning=FALSE}
+
+monthly_season <- data_clean %>%
+  mutate(month = month(purchase_date, label = TRUE, abbr = FALSE)) %>%  # Month name
+  group_by(month) %>%
+  summarise(total_revenue = sum(purchase_amount)) %>%
+  mutate(month = factor(month, levels = month.name)) %>%  # Ensure calendar order
+  arrange(month)
+ggplot(monthly_season, aes(x = month, y = total_revenue, group = 1)) +
+  geom_line(color = "purple", size = 1.2) +
+  geom_point(color = "red", size = 2) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    x = "Month",
+    y = "Total Revenue"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+**Interpretation:**  
+From 2020–2024, revenue shows high volatility with a flat long-term trend. Peaks occur in August and year-end (Sep–Dec), while troughs appear in February, April, and November. Management should leverage the August peak and address early-spring and late-autumn dips.
+
+# Total Revenue by Day of the Week
+
+```{r Total Revenue by Day of the Week, echo=TRUE, message=FALSE, warning=FALSE}
+day_of_week <- data_clean %>%
+  mutate(day = wday(purchase_date, label = TRUE, abbr = FALSE)) %>% 
+  group_by(day) %>%
+  summarise(total_revenue = sum(purchase_amount),
+            transaction_count = n()) %>%
+  arrange(match(day, c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")))
+
+ggplot(day_of_week, aes(x = day, y = total_revenue, fill = day)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = "Day of Week",
+    y = "Total Revenue"
+  ) +
+  theme_classic() +
+  theme(legend.position = "none")
+```
+
+**Interpretation**
+Revenue remains stable throughout the week, mostly ranging from $315K–$325K, indicating consistent demand
+
+
+
+## Recommendations for Business Strategy
+
+### 1. Market and Product Strategy
+
+- **Reinforce France's Clothing Segment:** France leads revenue, driven by Clothing (18% of total). Allocate marketing and inventory to strengthen this core market.  
+- **Investigate Mid-Tier Markets:** Canada, Germany, USA, and Australia generate ~16% each. Analyze categories or demographics limiting growth to unlock potential.  
+- **Boost Low-Performing Categories:** Beauty generates the lowest revenue. Use targeted campaigns or bundles, especially in the UK and USA, to increase contribution.  
+
+### 2. Time-Based Strategy
+
+- **Capitalize on Peak Season:** Prepare inventory and marketing for August peaks and Q4 (Sep–Dec) to maximize revenue.  
+- **Mitigate Revenue Troughs:** Implement promotions or inventory strategies during low months (Feb, Apr, Nov) to smooth volatility.  
+- **Maintain Uniform Daily Operations:** Revenue is consistent across weekdays. Focus on operational efficiency rather than shifting resources by day.  
+
+### 3. Customer Focus
+
+- **Prioritize 35–44 Age Group:** This segment spends the most. Offer premium products and loyalty programs targeting them.  
+- **Ensure Gender Balance:** Revenue is fairly balanced across Female (34.4%), Male (32.6%), and Other (33%). Maintain inclusive marketing to appeal broadly.
