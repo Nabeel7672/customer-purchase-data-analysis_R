@@ -10,7 +10,7 @@ Results are documented in R scripts, R Markdown, and a final PDF report.
 - `report.pdf` – Final report generated from R Markdown  
 
 ## Dataset
-Data sourced from [Kaggle: User Purchase Behavior Analysis Dataset](https://www.kaggle.com/datasets/refiaozturk/user-purchase-behavior-analysis)
+Data sourced from [Kaggle: User Purchase Behavior Analysis Dataset](https://www.kaggle.com/datasets/refiaozturk/online-shopping-dataset)
 
 ## Author
 Nabeel Kamal Shamsi | 2025-12-14
