@@ -33,6 +33,10 @@ Used for data cleaning, summarization, visualization, and analysis in this proje
 
 > **Note:** PDF can be downloaded to view charts and detailed analysis.
 
+## Slide Deck Overview
+Explore the full analysis and insights through the 10-slide deck created from this project.  
+Slides provide visual summaries of revenue trends, customer demographics, product categories, and seasonal patterns.
+
 ## Recommendations
 - Strengthen France’s Clothing segment  
 - Explore growth in mid-tier markets  
